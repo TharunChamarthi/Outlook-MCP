@@ -4,7 +4,11 @@ from mcp.server.fastmcp import FastMCP
 import msal
 import requests
 
-CLIENT_ID = "9e8a0a43-04f4-4019-afe3-a3d837bb9e4d"
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+CLIENT_ID = os.getenv("CLIENT_ID")
 AUTHORITY = "https://login.microsoftonline.com/consumers"
 SCOPES = ["Mail.ReadWrite", "Mail.ReadWrite.Shared", "Mail.Send"]
 TOKEN_CACHE_FILE = "token_cache.json"

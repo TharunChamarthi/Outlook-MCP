@@ -2,8 +2,12 @@
 
 import msal
 import json
+from dotenv import load_dotenv
+import os
 
-CLIENT_ID = "9e8a0a43-04f4-4019-afe3-a3d837bb9e4d"
+load_dotenv()
+CLIENT_ID = os.getenv("CLIENT_ID")
+
 AUTHORITY = "https://login.microsoftonline.com/consumers"
 SCOPES = ["Mail.ReadWrite", "Mail.ReadWrite.Shared", "Mail.Send"]
 TOKEN_CACHE_FILE = "token_cache.json"
