@@ -1,4 +1,4 @@
-# auth.py — Browser opens automatically, no codes needed!
+# auth.py — Browser opens automatically
 
 import msal
 import json
@@ -18,7 +18,6 @@ def authenticate():
     )
 
     # This automatically opens your browser to login!
-    # No codes to copy — just sign in when browser pops up
     result = app.acquire_token_interactive(scopes=SCOPES)
 
     if "access_token" in result:
