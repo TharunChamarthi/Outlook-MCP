@@ -204,6 +204,120 @@ def mark_all_emails_as_read() -> str:
     return f"✅ Marked {count} emails as read!"
 
 
+# ─── RESOURCES ────────────────────────────────────
+
+@mcp.resource("emails://inbox/summary")
+def inbox_summary() -> str:
+    """A summary of your current Outlook inbox status."""
+    token = get_access_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "ConsistencyLevel": "eventual"
+    }
+
+    # Get unread count
+    count = requests.get(
+        "https://graph.microsoft.com/v1.0/me/messages/$count?$filter=isRead eq false",
+        headers=headers
+    ).text
+
+    # Get latest 3 senders
+    emails = requests.get(
+        "https://graph.microsoft.com/v1.0/me/messages"
+        "?$filter=isRead eq false&$select=from,subject&$top=3",
+        headers={"Authorization": f"Bearer {token}"}
+    ).json().get("value", [])
+
+    senders = [e["from"]["emailAddress"]["address"] for e in emails]
+
+    return f"""
+Inbox Summary:
+- Unread emails: {count}
+- Latest senders: {', '.join(senders) if senders else 'None'}
+- Last checked: just now
+"""
+
+
+@mcp.resource("emails://inbox/folders")
+def inbox_folders() -> str:
+    """Lists all available folders in your Outlook inbox."""
+    token = get_access_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    folders = requests.get(
+        "https://graph.microsoft.com/v1.0/me/mailFolders",
+        headers=headers
+    ).json().get("value", [])
+
+    result = "Your Outlook Folders:\n\n"
+    for f in folders:
+        result += f"- {f['displayName']} ({f['unreadItemCount']} unread)\n"
+    return result
+
+
+@mcp.resource("emails://inbox/flagged")
+def flagged_emails() -> str:
+    """Lists all emails you have flagged for follow-up."""
+    token = get_access_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    emails = requests.get(
+        "https://graph.microsoft.com/v1.0/me/messages"
+        "?$filter=flag/flagStatus eq 'flagged'"
+        "&$select=subject,from,receivedDateTime&$top=10",
+        headers=headers
+    ).json().get("value", [])
+
+    if not emails:
+        return "No flagged emails! You're all caught up. ✅"
+
+    result = f"You have {len(emails)} flagged email(s):\n\n"
+    for i, e in enumerate(emails, 1):
+        result += f"{i}. {e['subject']} — from {e['from']['emailAddress']['address']}\n"
+    return result
+
+
+
+
+@mcp.prompt()
+def daily_inbox_review() -> str:
+    """Morning inbox review — summarizes unread emails and suggests actions."""
+    return """
+    Please do a complete morning inbox review for me:
+    
+    1. First call get_unread_count to see how many unread emails I have
+    2. Then call get_unread_emails to fetch them
+    3. Group the emails by type:
+       - 🔴 URGENT (anything about security, payments, deadlines, interviews)
+       - 📋 ACTION NEEDED (things that need a reply or decision)
+       - 📰 INFO ONLY (newsletters, notifications, digests)
+    4. For URGENT and ACTION NEEDED emails, suggest what to do
+    5. End with a 1-line summary like: "You have X urgent, Y need action, Z are info-only."
+    
+    Be concise and clear. Format with emojis for easy scanning.
+    """
+
+
+@mcp.prompt()
+def email_reply_helper(sender: str, subject: str) -> str:
+    """Helps draft a professional reply to a specific email."""
+    return f"""
+    I need to reply to an email:
+    - From: {sender}
+    - Subject: {subject}
+    
+    Please help me:
+    1. Suggest what this email is likely about based on the subject/sender
+    2. Draft 2 different reply options:
+       - Option A: Short and direct (3-4 sentences)
+       - Option B: Detailed and professional (full paragraph)
+    3. Ask me which one I want to send, then use send_email to send it
+    
+    Wait for my choice before sending anything.
+    """
+
+
+
 if __name__ == "__main__":
     mcp.run()
 
